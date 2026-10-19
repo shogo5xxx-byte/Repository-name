@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>じっくり魔物育成記</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#111;color:#eee;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",sans-serif}main{max-width:520px;min-height:100dvh;margin:auto;background:#191919;padding:18px 14px 90px}h1{font-size:23px;text-align:center;margin:8px 0 3px}h2{font-size:18px;margin:12px 0;border-bottom:1px solid #555;padding-bottom:8px}.sub{text-align:center;color:#aaa;font-size:12px}.card{background:#242424;border:1px solid #555;border-radius:7px;padding:12px;margin:12px 0}.muted{color:#aaa;font-size:12px}.row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}.sprite{text-align:center;font-size:70px;padding:8px}.tiny{font-size:34px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}button,select{font:inherit;color:#fff;background:#303c52;border:1px solid #7184a4;border-radius:5px;padding:11px 8px;cursor:pointer}button:disabled{opacity:.35;cursor:default}.wide{width:100%}.green{background:#28553c;border-color:#4f9a70}.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:14px 0}.nav button{font-size:12px;padding:10px 2px}.log{background:#080808;border:1px solid #777;padding:12px;white-space:pre-line;min-height:130px;max-height:300px;overflow:auto;font-size:13px;line-height:1.9}.bar{height:8px;background:#555;border-radius:6px;overflow:hidden}.bar span{display:block;height:100%;background:#78c979}.stat{display:grid;grid-template-columns:100px 1fr;gap:6px;border-bottom:1px solid #444;padding:7px 0;font-size:14px}.tag{display:inline-block;border:1px solid #666;padding:2px 5px;border-radius:4px;font-size:11px;color:#ccc}.choice{display:flex;align-items:center;gap:8px;text-align:left;width:100%;margin:7px 0}.choice .tiny{min-width:46px;text-align:center}footer{color:#888;font-size:11px;text-align:center;margin:25px 0}strong{color:#fff}p{line-height:1.65} 
+</style></head><body><main><h1>じっくり魔物育成記</h1><div class="sub">育てて、進化して、また育てる。　Ver.0.1</div><div id="app"><div class="card">ゲームを読み込んでいます…</div></div><footer>セーブはこのブラウザ内に保存されます。ブラウザのデータを削除すると消える場合があります。</footer></main>
+<script>
+"use strict";
+(function(){
+const base=[
+['dragon','ドラゴン族','チビドラゴン','🐉',[56,13,10,9,7]],
+['devil','悪魔族','ピクシー','🧚',[40,10,8,15,12]],
+['slime','スライム族','スライム','🫧',[55,9,12,8,10]],
+['material','物質族','ミニゴーレム','🪨',[64,10,16,5,6]],
+['beast','獣族','ウルフ','🐺',[47,14,8,14,8]],
+['undead','不死族','ゴースト','👻',[52,10,13,9,10]],
+['plant','植物族','マンドラゴラ','🌱',[58,8,14,7,12]],
+['angel','天使族','エンジェル','😇',[44,10,10,14,13]]
+];
+const extra=[
+['devilslime','悪魔族','デビルスライム','😈',[100,25,21,19,20]],
+['drakefairy','ドラゴン族','妖精竜','🐲',[95,24,19,24,19]],
+['flamedragon','ドラゴン族','フレイムドラゴン','🔥',[115,30,24,20,15]],
+['forestlord','植物族','樹霊','🌳',[105,18,28,12,24]],
+['ironbeast','物質族','鉄獣','🦾',[115,27,30,13,12]]
+];
+const mons=Object.fromEntries([...base,...extra].map(x=>[x[0],{id:x[0],race:x[1],name:x[2],icon:x[3],stats:x[4]}]));
+const recipes={'slime+devil':'devilslime','dragon+devil':'drakefairy','beast+material':'ironbeast','plant+undead':'forestlord'};
+const evo={'dragon':{to:'flamedragon',item:'炎の石',full:false},'plant':{to:'forestlord',item:'生命の雫',full:true}};
+const areas=[
+{name:'はじまりの草原',min:1,ids:['slime','plant','beast'],drop:'生命の雫'},
+{name:'薄暗い洞窟',min:4,ids:['material','undead','devil'],drop:'炎の石'},
+{name:'古い神殿',min:8,ids:['angel','dragon','devil'],drop:'炎の石'}
+];
+const KEY='jikkuri-mamono-v01';
+let state;
+try{state=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){state=null}
+if(!state||!Array.isArray(state.party))state={party:[],active:null,seen:[],recipes:[],items:{'鍛錬の実':0,'炎の石':0,'生命の雫':0},area:0,wins:0,logs:[],page:'start',auto:false};
+state.auto=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function maxLv(m){return m.id in mons && extra.some(x=>x[0]===m.id)?30:15}
+function create(id){return {id,lv:1,xp:0,bonus:[0,0,0,0,0],hp:null}}
+function values(m){const b=mons[m.id].stats;return b.map((v,i)=>Math.min(v*3,Math.floor(v*(1+(m.lv-1)*.085))+m.bonus[i]))}
+function caps(m){return mons[m.id].stats.map(x=>x*3)}
+function full(m){return values(m).every((v,i)=>v>=caps(m)[i])}
+function xpNeed(m){return 12+m.lv*9}
+function active(){return state.party.find(m=>m.id===state.active)||null}
+function log(t){state.logs.unshift(t);state.logs=state.logs.slice(0,14)}
+function rand(n){return Math.floor(Math.random()*n)}
+function rewardXp(m,n){if(m.lv>=maxLv(m))return; m.xp+=n;while(m.lv<maxLv(m)&&m.xp>=xpNeed(m)){m.xp-=xpNeed(m);m.lv++;log('★ '+mons[m.id].name+' は Lv.'+m.lv+' になった！')}if(m.lv>=maxLv(m)){m.xp=0;log('★ レベルMAX！ 合成が可能になった。')}}
+function btn(label,fn,cls='',disabled=false){return '<button '+(disabled?'disabled ':'')+'class="'+cls+'" data-action="'+fn+'">'+label+'</button>'}
+function nav(){return '<div class="nav">'+[['home','魔物'],['battle','探索'],['fusion','合成'],['book','図鑑']].map(([id,t])=>btn(t,'page:'+id,state.page===id?'green':'')).join('')+'</div>'}
+function status(m){let v=values(m),c=caps(m);return '<div class="sprite">'+mons[m.id].icon+'</div><div style="text-align:center"><strong>'+mons[m.id].name+'</strong> <span class="tag">'+mons[m.id].race+'</span><p>Lv.'+m.lv+' / '+maxLv(m)+'　'+(m.lv>=maxLv(m)?'MAX':'EXP '+m.xp+'/'+xpNeed(m))+'</p></div>'+['HP','攻撃','防御','素早さ','運'].map((t,i)=>'<div class="stat"><span>'+t+'</span><span>'+v[i]+' / '+c[i]+'<div class="bar"><span style="width:'+(100*v[i]/c[i])+'%"></span></div></span></div>').join('')}
+function render(){
+let out='';
+if(!state.party.length){state.page='start';out='<h2>最初の種族を選ぼう</h2><p class="muted">好きな種族の最下位モンスター1匹から始まる。後からほかの種族も仲間にできるで！</p><div class="grid">'+base.map(x=>btn('<div class="tiny">'+x[3]+'</div>'+x[1]+'<br><small>'+x[2]+'</small>','start:'+x[0])).join('')+'</div>'}
+else{
+out=nav();
+if(state.page==='home'){const m=active();out+='<h2>マイモンスター</h2><div class="card">'+(m?status(m):'モンスターを選んでください')+'</div><h2>待機所　'+state.party.length+'匹</h2>'+state.party.map(m=>'<div class="row"><span>'+mons[m.id].icon+' '+mons[m.id].name+' Lv.'+m.lv+(state.active===m.id?' ★':'')+'</span>'+btn('育成に選ぶ','select:'+m.id,'',state.active===m.id)+'</div>').join('')+'<div class="card"><h2>育成アイテム</h2><p>鍛錬の実 × '+(state.items['鍛錬の実']||0)+'</p><p class="muted">能力を選んで強化。Lv.MAX後も使える。</p><div class="grid">'+['HP','攻撃','防御','素早さ','運'].map((t,i)=>btn(t+' +'+(i===0?6:2),'train:'+i,'',!(state.items['鍛錬の実']>0)||!m||values(m)[i]>=caps(m)[i])).join('')+'</div></div><div class="card"><h2>進化</h2>'+(m&&evo[m.id]?'<p>進化先：？？？</p><p>必要：'+evo[m.id].item+' ×1'+(evo[m.id].full?' ＋ 全能力MAX':' ＋ Lv.MAX')+'</p>'+btn('進化させる','evolve','green',!(state.items[evo[m.id].item]>0)||m.lv<maxLv(m)||(evo[m.id].full&&!full(m))):'<p class="muted">現在発見できる進化はありません。進化先は未知のままです。</p>')+'</div>'}
+else if(state.page==='battle'){const area=areas[state.area]||areas[0];out+='<h2>ダンジョン</h2><div class="card"><div class="row"><strong>'+area.name+'</strong><span>勝利 '+state.wins+'回</span></div><p class="muted">敵を倒すと自動で次の敵へ。仲間加入は確率制。同じ種類は2匹所持できません。</p><select id="area" style="width:100%">'+areas.map((a,i)=>'<option value="'+i+'" '+(state.area===i?'selected':'')+' '+(state.wins<a.min-1?'disabled':'')+'>'+a.name+(state.wins<a.min-1?'（未解放）':'')+'</option>').join('')+'</select><p>'+btn('1戦する','fight','green')+' '+btn('10戦まとめて周回','ten')+'</p><p class="muted">HPは各戦闘後に回復。敗北しても失うものはありません。</p></div><h2>戦闘ログ</h2><div class="log">'+(state.logs.length?state.logs.map(esc).join('\n\n'):'まだ戦闘していません。')+'</div>'}
+else if(state.page==='fusion'){out+='<h2>合成</h2><p class="muted">素材2匹ともLv.MAXで合成できる。合成後は2匹とも消え、同じ種類を再び捕獲できる。</p><div class="card"><label>素材①</label><select id="a" style="width:100%"><option value="">選択</option>'+state.party.map(m=>'<option value="'+m.id+'">'+mons[m.id].name+' Lv.'+m.lv+'</option>').join('')+'</select><br><br><label>素材②</label><select id="b" style="width:100%"><option value="">選択</option>'+state.party.map(m=>'<option value="'+m.id+'">'+mons[m.id].name+' Lv.'+m.lv+'</option>').join('')+'</select><p>合成結果：<strong>？？？</strong></p>'+btn('合成する','fuse','green')+'</div><p class="muted">合成レシピは一部の組み合わせから発見できる。未対応の組み合わせでは素材は消費されません。</p><h2>発見済みレシピ</h2>'+(state.recipes.length?state.recipes.map(k=>'<p>'+k.split('+').map(x=>mons[x].name).join(' ＋ ')+' → '+mons[recipes[k]].name+'</p>').join(''):'まだありません')}
+else if(state.page==='book'){out+='<h2>魔物図鑑</h2><p>発見：'+state.seen.length+' / '+Object.keys(mons).length+'</p><div class="grid">'+Object.values(mons).map(m=>'<div class="card" style="text-align:center">'+(state.seen.includes(m.id)?'<div class="tiny">'+m.icon+'</div>'+m.name+'<div class="muted">'+m.race+'</div>':'<div class="tiny">？</div>？？？')+'</div>').join('')+'</div>'}
+}
+$('app').innerHTML=out;save();
+}
+function fight(){const m=active();if(!m)return;const area=areas[state.area];const enemyId=area.ids[rand(area.ids.length)],enemy=mons[enemyId],my=values(m);let hp=my[0],ehp=enemy.stats[0]+rand(12),lines=['【'+area.name+'】 '+enemy.name+' が現れた！'];let rounds=0;while(hp>0&&ehp>0&&rounds++<25){const hit=Math.max(1,my[1]+rand(8)-Math.floor(enemy.stats[2]*.45));ehp-=hit;lines.push(mons[m.id].name+'の攻撃！ '+enemy.name+'に'+hit+'ダメージ');if(ehp<=0)break;const dmg=Math.max(1,enemy.stats[1]+rand(6)-Math.floor(my[2]*.45));hp-=dmg;lines.push(enemy.name+'の攻撃！ '+mons[m.id].name+'に'+dmg+'ダメージ')}if(ehp<=0){state.wins++;const xp=7+rand(10)+state.area*5;lines.push(enemy.name+'を倒した！ 経験値+'+xp);rewardXp(m,xp);if(Math.random()<.24){state.items['鍛錬の実']++;lines.push('鍛錬の実を手に入れた！')}if(Math.random()<.08){state.items[area.drop]=(state.items[area.drop]||0)+1;lines.push(area.drop+'を手に入れた！')}if(!state.party.some(x=>x.id===enemyId)&&Math.random()<.22){state.party.push(create(enemyId));state.seen=[...new Set([...state.seen,enemyId])];lines.push('★ '+enemy.name+'が仲間になった！')}}else lines.push('敗北… また挑戦しよう！');log(lines.join('\n'))}
+function act(cmd){const [type,arg]=cmd.split(':');if(type==='page'){state.page=arg}else if(type==='start'){state.party=[create(arg)];state.active=arg;state.seen=[arg];state.page='home'}else if(type==='select'){state.active=arg}else if(type==='fight'){fight()}else if(type==='ten'){for(let i=0;i<10;i++)fight()}else if(type==='train'){const m=active(),i=+arg;if(m&&state.items['鍛錬の実']>0&&values(m)[i]<caps(m)[i]){m.bonus[i]+=i===0?6:2;state.items['鍛錬の実']--;log('鍛錬の実で'+['HP','攻撃','防御','素早さ','運'][i]+'が上がった！')}}else if(type==='evolve'){const m=active(),e=m&&evo[m.id];if(e&&m.lv>=maxLv(m)&&state.items[e.item]>0&&(!e.full||full(m))&&!state.party.some(x=>x.id===e.to)){state.items[e.item]--;state.party=state.party.filter(x=>x!==m);state.party.push(create(e.to));state.active=e.to;state.seen=[...new Set([...state.seen,e.to])];alert('進化成功！ '+mons[e.to].name+'になった！')}}else if(type==='fuse'){const a=$('a').value,b=$('b').value;if(!a||!b||a===b){alert('違う2匹を選んでな！');return}const ma=state.party.find(x=>x.id===a),mb=state.party.find(x=>x.id===b);if(!ma||!mb||ma.lv<maxLv(ma)||mb.lv<maxLv(mb)){alert('2匹ともレベルMAXが必要やで！');return}const k=[a,b].sort().join('+'),id=recipes[k];if(!id){alert('この組み合わせの合成はまだ発見できません。素材はそのままです。');return}if(state.party.some(x=>x.id===id)){alert('合成結果の魔物をすでに所持しています。');return}if(!confirm('素材の2匹は消えるで。合成する？'))return;state.party=state.party.filter(x=>x.id!==a&&x.id!==b);state.party.push(create(id));state.active=id;state.seen=[...new Set([...state.seen,id])];state.recipes=[...new Set([...state.recipes,k])];alert('合成成功！ '+mons[id].name+'が誕生した！');state.page='home'}render()}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b)act(b.dataset.action)});
+document.addEventListener('change',e=>{if(e.target.id==='area'){state.area=+e.target.value;render()}});
+render();
+})();
+</script></body></html>
